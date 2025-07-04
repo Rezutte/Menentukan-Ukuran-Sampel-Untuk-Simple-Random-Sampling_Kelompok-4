@@ -1,101 +1,149 @@
-# app_v1.2.R
+# app_v1.5.R
 library(shiny)
+# library(shinythemes) # Jika ingin menggunakan tema bootstrap yang lebih luas
+# library(fontawesome) # Jika ingin menggunakan ikon Font Awesome
 
+# --- UI (User Interface) ---
 ui <- fluidPage(
-  titlePanel("Kalkulator Ukuran Sampel (n) - v1.2 (SRS, Systematic, Stratified)"),
+  # theme = shinytheme("flatly"), # Contoh penggunaan tema dari shinythemes
+  
+  titlePanel("Kalkulator Ukuran Sampel (n) - v1.5 (Enhanced UI/UX)"),
   
   sidebarLayout(
     sidebarPanel(
-      h3("1. Pilih Tujuan & Metode"),
-      selectInput("purpose",
-                  "Tujuan Penelitian:",
-                  choices = c("Estimasi Proporsi", "Estimasi Rata-rata"),
-                  selected = "Estimasi Proporsi"),
-      
-      selectInput("main_method",
-                  "Metode Sampling Utama:",
-                  choices = c("Simple Random Sampling (SRS)",
-                              "Systematic Sampling",
-                              "Stratified Random Sampling"), 
-                  selected = "Simple Random Sampling (SRS)"),
+      h3("📊 1. Tujuan & Metode Sampling"),
+      wellPanel(
+        selectInput("purpose",
+                    "Tujuan Penelitian:",
+                    choices = c("Estimasi Proporsi", "Estimasi Rata-rata"),
+                    selected = "Estimasi Proporsi"),
+        helpText("Pilih apakah Anda ingin mengestimasi persentase/proporsi atau nilai rata-rata dari populasi."),
+        
+        selectInput("main_method",
+                    "Metode Sampling Utama:",
+                    choices = c("Simple Random Sampling (SRS)",
+                                "Systematic Sampling",
+                                "Stratified Random Sampling",
+                                "Cluster Sampling"),
+                    selected = "Simple Random Sampling (SRS)"),
+        helpText("Pilih metode pengambilan sampel yang akan Anda gunakan.")
+      ),
       
       conditionalPanel(
         condition = "input.main_method == 'Simple Random Sampling (SRS)'",
-        radioButtons("srs_type",
-                     "Tipe SRS:",
-                     choices = c("Without Replacement (WOR) - dengan FPC",
-                                 "With Replacement (WR) - tanpa FPC"),
-                     selected = "Without Replacement (WOR) - dengan FPC")
+        wellPanel(
+          h4("Tipe SRS"),
+          radioButtons("srs_type",
+                       "Pilih Tipe SRS:",
+                       choices = c("Without Replacement (WOR) - dengan FPC",
+                                   "With Replacement (WR) - tanpa FPC"),
+                       selected = "Without Replacement (WOR) - dengan FPC"),
+          helpText("WOR: Setiap elemen hanya bisa dipilih sekali (umumnya). WR: Elemen bisa dipilih berkali-kali.")
+        )
       ),
       
       hr(),
       
-      h3("2. Input Umum"),
-      sliderInput("confidence_level",
-                  "Tingkat Kepercayaan:",
-                  min = 0.80, max = 0.99, value = 0.95, step = 0.01),
-      numericInput("margin_error",
-                   "Margin Kesalahan (contoh: 0.05 untuk 5% atau 5 unit):",
-                   value = 0.05, min = 0.001),
+      h3("⚙️ 2. Input Umum"),
+      wellPanel(
+        sliderInput("confidence_level",
+                    "Tingkat Kepercayaan (Confidence Level):",
+                    min = 0.80, max = 0.99, value = 0.95, step = 0.01),
+        helpText("Probabilitas bahwa interval kepercayaan akan mengandung parameter populasi sebenarnya (umumnya 0.95 atau 95%)."),
+        
+        numericInput("margin_error",
+                     "Margin Kesalahan (Margin of Error / Presisi):",
+                     value = 0.05, min = 0.001),
+        helpText("Seberapa dekat estimasi sampel Anda dengan parameter populasi yang sebenarnya (contoh: 0.05 untuk 5% atau 5 unit).")
+      ),
       
       hr(),
       
-      h3("3. Input Spesifik"),
-      conditionalPanel(
-        condition = "input.main_method == 'Simple Random Sampling (SRS)' || input.main_method == 'Systematic Sampling'",
-        numericInput("N_population_srs_sys",
-                     "Total Ukuran Populasi (N):",
-                     value = 1000, min = 1)
-      ),
-      
-      conditionalPanel(
-        condition = "input.purpose == 'Estimasi Proporsi'",
-        numericInput("p_estimate",
-                     "Estimasi Awal Proporsi Populasi (0-1, gunakan 0.5 jika tidak yakin):",
-                     value = 0.5, min = 0, max = 1, step = 0.01)
-      ),
-      
-      conditionalPanel(
-        condition = "input.purpose == 'Estimasi Rata-rata'",
-        numericInput("sd_estimate",
-                     "Estimasi Standar Deviasi Populasi (σ):",
-                     value = 10, min = 0.001)
+      h3("🔢 3. Input Spesifik (Sesuai Metode)"),
+      wellPanel(
+        conditionalPanel(
+          condition = "input.main_method == 'Simple Random Sampling (SRS)' || input.main_method == 'Systematic Sampling'",
+          numericInput("N_population_srs_sys",
+                       "Total Ukuran Populasi (N):",
+                       value = 1000, min = 1),
+          helpText("Jumlah total elemen dalam populasi yang akan disampel.")
+        ),
+        
+        conditionalPanel(
+          condition = "input.purpose == 'Estimasi Proporsi'",
+          numericInput("p_estimate",
+                       "Estimasi Awal Proporsi Populasi (0-1):",
+                       value = 0.5, min = 0, max = 1, step = 0.01),
+          helpText("Perkiraan awal persentase karakteristik yang Anda teliti. Gunakan 0.5 jika tidak yakin untuk ukuran sampel terbesar (konservatif).")
+        ),
+        
+        conditionalPanel(
+          condition = "input.purpose == 'Estimasi Rata-rata'",
+          numericInput("sd_estimate",
+                       "Estimasi Standar Deviasi Populasi (σ):",
+                       value = 10, min = 0.001),
+          helpText("Perkiraan sebaran data di populasi. Bisa dari studi sebelumnya atau perkiraan kasar.")
+        )
       ),
       
       conditionalPanel(
         condition = "input.main_method == 'Stratified Random Sampling'",
-        numericInput("num_strata",
-                     "Jumlah Strata:",
-                     value = 2, min = 1),
-        uiOutput("strata_inputs"),
-        selectInput("allocation_method",
-                    "Metode Alokasi Sampel:",
-                    choices = c("Proporsional", "Optimal (Neyman)"),
-                    selected = "Proporsional")
+        wellPanel(
+          h4("Detail Strata"),
+          numericInput("num_strata",
+                       "Jumlah Strata:",
+                       value = 2, min = 1),
+          helpText("Tentukan berapa banyak kelompok homogen yang ada dalam populasi Anda."),
+          uiOutput("strata_inputs"),
+          selectInput("allocation_method",
+                      "Metode Alokasi Sampel:",
+                      choices = c("Proporsional", "Optimal (Neyman)"),
+                      selected = "Proporsional"),
+          helpText("Bagaimana total sampel akan dibagi ke setiap strata.")
+        )
       ),
       
-      actionButton("calculate_n", "Hitung Ukuran Sampel (n)")
+      conditionalPanel(
+        condition = "input.main_method == 'Cluster Sampling'",
+        wellPanel(
+          h4("Detail Klaster"),
+          numericInput("M_clusters",
+                       "Jumlah Klaster dalam Populasi (M):",
+                       value = 50, min = 1),
+          helpText("Total jumlah gugus atau kelompok alami yang ada di populasi."),
+          numericInput("avg_cluster_size",
+                       "Ukuran Rata-rata Klaster:",
+                       value = 20, min = 1),
+          helpText("Rata-rata jumlah individu per klaster."),
+          numericInput("icc_cluster",
+                       "Koefisien Korelasi Intra-Kelas (ICC, 0-1):",
+                       value = 0.1, min = 0, max = 1, step = 0.01),
+          helpText("Mengukur seberapa mirip elemen dalam satu klaster. Didapat dari studi sebelumnya atau perkiraan ahli.")
+        )
+      ),
+      
+      actionButton("calculate_n", "Hitung Ukuran Sampel (n)", icon = icon("calculator")) # Menambahkan ikon
     ),
     
     mainPanel(
-      h3("Hasil Perhitungan Ukuran Sampel"),
-      h4("Ukuran Sampel (n) yang Direkomendasikan:"),
-      verbatimTextOutput("sample_size_output"),
-      uiOutput("additional_info")
+      h3("✅ Hasil Perhitungan Ukuran Sampel"),
+      p("Berdasarkan input Anda, ukuran sampel yang direkomendasikan adalah:"),
+      wellPanel(
+        style = "background-color: #f0f0f0; padding: 15px; border-radius: 8px;",
+        h2(textOutput("sample_size_output"), style = "color: #007bff; font-weight: bold; text-align: center;"),
+        uiOutput("additional_info")
+      ),
+      p("Angka ini adalah jumlah minimum responden atau klaster yang Anda butuhkan untuk mencapai tingkat kepercayaan dan margin kesalahan yang diinginkan.")
     )
   )
 )
 
+# --- Server Logic (Sama seperti v1.4, tidak perlu diubah) ---
 server <- function(input, output, session) {
-  
-  get_z_score <- function(confidence_level) {
-    qnorm(1 - (1 - confidence_level) / 2)
-  }
-  
+  get_z_score <- function(confidence_level) { qnorm(1 - (1 - confidence_level) / 2) }
   output$strata_inputs <- renderUI({
     num_strata <- input$num_strata
     if (is.null(num_strata) || num_strata < 1) return(NULL)
-    
     lapply(1:num_strata, function(i) {
       fluidRow(
         column(6, numericInput(paste0("N_stratum_", i), paste0("Ukuran Strata ", i, " (Nh):"), value = 100, min = 1)),
@@ -111,109 +159,89 @@ server <- function(input, output, session) {
   })
   
   calculated_n <- eventReactive(input$calculate_n, {
+    validate(
+      need(input$margin_error > 0, "Margin Kesalahan harus lebih besar dari 0."),
+      need(input$confidence_level >= 0.8 && input$confidence_level <= 0.99, "Tingkat Kepercayaan harus antara 0.80 dan 0.99.")
+    )
     Z <- get_z_score(input$confidence_level)
     E <- input$margin_error
-    
     n_val <- NA
     output$additional_info <- renderUI(NULL)
     
     if (input$purpose == "Estimasi Proporsi") {
+      validate(need(input$p_estimate >= 0 && input$p_estimate <= 1, "Estimasi Proporsi harus antara 0 dan 1."))
       p <- input$p_estimate
       
       if (input$main_method == "Simple Random Sampling (SRS)" || input$main_method == "Systematic Sampling") {
         N <- input$N_population_srs_sys
+        validate(need(N >= 1, "Total Ukuran Populasi (N) harus minimal 1."))
         n0 <- (Z^2 * p * (1 - p)) / (E^2)
-        
-        if ((input$main_method == "Simple Random Sampling (SRS)" && input$srs_type == "Without Replacement (WOR) - dengan FPC") ||
-            (input$main_method == "Systematic Sampling")) {
-          if (!is.null(N) && N > 0) {
-            n_val <- ceiling(n0 / (1 + (n0 - 1) / N))
-          } else { n_val <- ceiling(n0) }
+        if ((input$main_method == "Simple Random Sampling (SRS)" && input$srs_type == "Without Replacement (WOR) - dengan FPC") || (input$main_method == "Systematic Sampling")) {
+          n_val <- ceiling(n0 / (1 + (n0 - 1) / N))
           output$additional_info <- renderUI({ HTML(paste0("<p>Menggunakan Cochran's Formula dengan Koreksi Populasi Terbatas (FPC).</p>")) })
-        } else { # SRS WR
-          n_val <- ceiling(n0)
-          output$additional_info <- renderUI({ HTML(paste0("<p>Menggunakan Cochran's Formula (tanpa Koreksi Populasi Terbatas).</p>")) })
-        }
+        } else { n_val <- ceiling(n0); output$additional_info <- renderUI({ HTML(paste0("<p>Menggunakan Cochran's Formula (tanpa Koreksi Populasi Terbatas).</p>")) }) }
       } else if (input$main_method == "Stratified Random Sampling") {
-        num_strata <- input$num_strata
-        if (is.null(num_strata) || num_strata < 1) return("Jumlah strata tidak valid.")
-        
-        total_N_strata <- 0
-        sum_Nh_ph_qh <- 0
-        sum_Nh_sh <- 0
+        num_strata <- input$num_strata; validate(need(num_strata >= 1, "Jumlah Strata harus minimal 1."))
+        total_N_strata <- 0; sum_Nh_ph_qh <- 0; sum_Nh_sh <- 0
         for (i in 1:num_strata) {
-          Nh <- input[[paste0("N_stratum_", i)]]
-          ph <- input[[paste0("p_stratum_", i)]]
-          total_N_strata <- total_N_strata + Nh
-          sum_Nh_ph_qh <- sum_Nh_ph_qh + (Nh * ph * (1 - ph))
+          Nh <- input[[paste0("N_stratum_", i)]]; ph <- input[[paste0("p_stratum_", i)]]
+          validate(need(!is.null(Nh) && Nh >= 1, paste0("Ukuran Strata ", i, " (Nh) harus minimal 1.")), need(!is.null(ph) && ph >= 0 && ph <= 1, paste0("Estimasi Proporsi Strata ", i, " (ph) harus antara 0 dan 1.")))
+          total_N_strata <- total_N_strata + Nh; sum_Nh_ph_qh <- sum_Nh_ph_qh + (Nh * ph * (1 - ph))
           sum_Nh_sh <- sum_Nh_sh + (Nh * sqrt(ph * (1-ph)))
         }
-        
+        validate(need(total_N_strata > 0, "Total Ukuran Populasi dari Strata harus lebih dari 0."))
         if (input$allocation_method == "Proporsional") {
-          num <- Z^2 * sum_Nh_ph_qh
-          den <- E^2 * total_N_strata^2 + Z^2 * sum_Nh_ph_qh
-          n_val <- ceiling(num / den)
+          num <- Z^2 * sum_Nh_ph_qh; den <- E^2 * total_N_strata^2 + Z^2 * sum_Nh_ph_qh; n_val <- ceiling(num / den)
         } else if (input$allocation_method == "Optimal (Neyman)") {
-          num_neyman <- (sum_Nh_sh)^2
-          den_neyman <- (total_N_strata^2 * E^2 / Z^2) + sum_Nh_ph_qh
-          n_val <- ceiling(num_neyman / den_neyman)
+          num_neyman <- (sum_Nh_sh)^2; den_neyman <- (total_N_strata^2 * E^2 / Z^2) + sum_Nh_ph_qh; n_val <- ceiling(num_neyman / den_neyman)
         }
+      } else if (input$main_method == "Cluster Sampling") {
+        M <- input$M_clusters; avg_m <- input$avg_cluster_size; ICC <- input$icc_cluster; p_cluster <- input$p_estimate
+        validate(need(M >= 1, "Jumlah Klaster dalam Populasi (M) harus minimal 1."), need(avg_m >= 1, "Ukuran Rata-rata Klaster harus minimal 1."), need(ICC >= 0 && ICC <= 1, "ICC harus antara 0 dan 1."))
+        Deff <- 1 + (avg_m - 1) * ICC; n0_cluster <- (Z^2 * p_cluster * (1 - p_cluster)) / (E^2)
+        n_val_adjusted <- n0_cluster * Deff; k_clusters <- n_val_adjusted / avg_m; n_val <- ceiling(k_clusters)
+        output$additional_info <- renderUI({ HTML(paste0("<p>Ini berarti Anda membutuhkan sekitar **", ceiling(k_clusters), " klaster** untuk survei ini, dengan ukuran rata-rata ", avg_m, " responden per klaster.</p>", "<p>Design Effect (Deff) yang digunakan: **", round(Deff, 2), "**</p>")) })
       }
-      
     } else if (input$purpose == "Estimasi Rata-rata") {
+      validate(need(input$sd_estimate > 0, "Estimasi Standar Deviasi Populasi (σ) harus lebih besar dari 0."))
       sigma <- input$sd_estimate
       
       if (input$main_method == "Simple Random Sampling (SRS)" || input$main_method == "Systematic Sampling") {
         N <- input$N_population_srs_sys
+        validate(need(N >= 1, "Total Ukuran Populasi (N) harus minimal 1."))
         n0 <- (Z^2 * sigma^2) / (E^2)
-        
-        if ((input$main_method == "Simple Random Sampling (SRS)" && input$srs_type == "Without Replacement (WOR) - dengan FPC") ||
-            (input$main_method == "Systematic Sampling")) {
-          if (!is.null(N) && N > 0) {
-            n_val <- ceiling(n0 / (1 + (n0 - 1) / N))
-          } else { n_val <- ceiling(n0) }
+        if ((input$main_method == "Simple Random Sampling (SRS)" && input$srs_type == "Without Replacement (WOR) - dengan FPC") || (input$main_method == "Systematic Sampling")) {
+          n_val <- ceiling(n0 / (1 + (n0 - 1) / N))
           output$additional_info <- renderUI({ HTML(paste0("<p>Menggunakan Cochran's Formula dengan Koreksi Populasi Terbatas (FPC).</p>")) })
-        } else { # SRS WR
-          n_val <- ceiling(n0)
-          output$additional_info <- renderUI({ HTML(paste0("<p>Menggunakan Cochran's Formula (tanpa Koreksi Populasi Terbatas).</p>")) })
-        }
+        } else { n_val <- ceiling(n0); output$additional_info <- renderUI({ HTML(paste0("<p>Menggunakan Cochran's Formula (tanpa Koreksi Populasi Terbatas).</p>")) }) }
       } else if (input$main_method == "Stratified Random Sampling") {
-        num_strata <- input$num_strata
-        if (is.null(num_strata) || num_strata < 1) return("Jumlah strata tidak valid.")
-        
-        total_N_strata <- 0
-        sum_Nh_sdh_squared <- 0
-        sum_Nh_sdh <- 0
+        num_strata <- input$num_strata; validate(need(num_strata >= 1, "Jumlah Strata harus minimal 1."))
+        total_N_strata <- 0; sum_Nh_sdh_squared <- 0; sum_Nh_sdh <- 0
         for (i in 1:num_strata) {
-          Nh <- input[[paste0("N_stratum_", i)]]
-          sdh <- input[[paste0("sd_stratum_", i)]]
-          total_N_strata <- total_N_strata + Nh
-          sum_Nh_sdh_squared <- sum_Nh_sdh_squared + (Nh * sdh^2)
+          Nh <- input[[paste0("N_stratum_", i)]]; sdh <- input[[paste0("sd_stratum_", i)]]
+          validate(need(!is.null(Nh) && Nh >= 1, paste0("Ukuran Strata ", i, " (Nh) harus minimal 1.")), need(!is.null(sdh) && sdh > 0, paste0("Estimasi SD Strata ", i, " (σh) harus lebih besar dari 0.")))
+          total_N_strata <- total_N_strata + Nh; sum_Nh_sdh_squared <- sum_Nh_sdh_squared + (Nh * sdh^2)
           sum_Nh_sdh <- sum_Nh_sdh + (Nh * sdh)
         }
-        
+        validate(need(total_N_strata > 0, "Total Ukuran Populasi dari Strata harus lebih dari 0."))
         if (input$allocation_method == "Proporsional") {
-          num <- Z^2 * sum_Nh_sdh_squared
-          den <- E^2 * total_N_strata^2 + Z^2 * sum_Nh_sdh_squared
-          n_val <- ceiling(num / den)
+          num <- Z^2 * sum_Nh_sdh_squared; den <- E^2 * total_N_strata^2 + Z^2 * sum_Nh_sdh_squared; n_val <- ceiling(num / den)
         } else if (input$allocation_method == "Optimal (Neyman)") {
-          num_neyman <- (sum_Nh_sdh)^2
-          den_neyman <- (total_N_strata^2 * E^2 / Z^2) + sum_Nh_sdh_squared
-          n_val <- ceiling(num_neyman / den_neyman)
+          num_neyman <- (sum_Nh_sdh)^2; den_neyman <- (total_N_strata^2 * E^2 / Z^2) + sum_Nh_sdh_squared; n_val <- ceiling(num_neyman / den_neyman)
         }
+      } else if (input$main_method == "Cluster Sampling") {
+        M <- input$M_clusters; avg_m <- input$avg_cluster_size; ICC <- input$icc_cluster; sigma_cluster <- input$sd_estimate
+        validate(need(M >= 1, "Jumlah Klaster dalam Populasi (M) harus minimal 1."), need(avg_m >= 1, "Ukuran Rata-rata Klaster harus minimal 1."), need(ICC >= 0 && ICC <= 1, "ICC harus antara 0 dan 1."))
+        Deff <- 1 + (avg_m - 1) * ICC; n0_cluster <- (Z^2 * sigma_cluster^2) / (E^2)
+        n_val_adjusted <- n0_cluster * Deff
+        k_clusters <- n_val_adjusted / avg_m; n_val <- ceiling(k_clusters)
+        output$additional_info <- renderUI({ HTML(paste0("<p>Ini berarti Anda membutuhkan sekitar **", ceiling(k_clusters), " klaster** untuk survei ini, dengan ukuran rata-rata ", avg_m, " responden per klaster.</p>", "<p>Design Effect (Deff) yang digunakan: **", round(Deff, 2), "**</p>")) })
       }
     }
-    
-    if (is.na(n_val) || n_val < 1) {
-      "Input tidak valid atau perhitungan tidak dapat dilakukan. Pastikan semua input terisi dengan benar."
-    } else {
-      as.character(ceiling(n_val))
-    }
+    as.character(ceiling(n_val))
   })
   
-  output$sample_size_output <- renderText({
-    calculated_n()
-  })
+  output$sample_size_output <- renderText({ calculated_n() })
 }
 
 shinyApp(ui = ui, server = server)
